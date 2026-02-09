@@ -68,3 +68,30 @@ def calculate_confluence_score(rsi, ma_dist_pct, sma50, sma200):
             breakdown["trend"] = 15
     final_score = max(0, min(100, score))
     return final_score, breakdown
+
+def detect_volume_shocker(df, vol_avg_20):
+    """
+    Detects volume shockers - when today's volume significantly exceeds 20-day average.
+    Returns shock_level and vol_ratio
+    - vol_ratio: today's volume / 20-day average volume
+    - shock_level: "Extreme" (>3x), "High" (>2.5x), "Moderate" (>2x), "Normal"
+    """
+    if len(df) < 2 or pd.isna(vol_avg_20) or vol_avg_20 == 0:
+        return "Normal", 0
+    
+    curr_volume = df.iloc[-1]["volume"]
+    if pd.isna(curr_volume):
+        return "Normal", 0
+    
+    vol_ratio = curr_volume / vol_avg_20
+    
+    if vol_ratio >= 3.0:
+        shock_level = "Extreme"
+    elif vol_ratio >= 2.5:
+        shock_level = "High"
+    elif vol_ratio >= 2.0:
+        shock_level = "Moderate"
+    else:
+        shock_level = "Normal"
+    
+    return shock_level, round(vol_ratio, 2)

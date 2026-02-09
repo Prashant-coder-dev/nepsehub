@@ -16,7 +16,7 @@ from shared.constants import (
     GOOGLE_SHEET_CSV, RSI_PERIOD, MA_PERIOD, MA_50, MA_200
 )
 from technical_service.logic import (
-    calculate_rsi, calculate_ma, detect_candlestick, calculate_confluence_score
+    calculate_rsi, calculate_ma, detect_candlestick, calculate_confluence_score, detect_volume_shocker
 )
 
 app = FastAPI(title="NEPSE Technical Service")
@@ -38,6 +38,7 @@ CACHE = {
     "confluence": pd.DataFrame(),
     "candlestick": pd.DataFrame(),
     "momentum": pd.DataFrame(),
+    "volume_shocker": pd.DataFrame(),
     "last_updated": None
 }
 
@@ -66,6 +67,7 @@ async def load_technical_data():
         CACHE["raw"] = df.copy()
 
         rsi_list, ma_list, cross_list, conf_list, candle_list, momentum_list = [], [], [], [], [], []
+        volume_shocker_list = []
 
         for symbol, g in df.groupby("symbol"):
             symbol_str = str(symbol).upper()
@@ -127,12 +129,21 @@ async def load_technical_data():
                 "breakout": "High" if last["close"] >= h52 else "Low" if last["close"] <= l52 else "Neutral"
             })
 
+            shock_level, shock_ratio = detect_volume_shocker(g, last["vol_avg20"])
+            if shock_level != "Normal":
+                volume_shocker_list.append({
+                    "symbol": symbol_str, "close": float(last["close"]), "volume": float(last["volume"]),
+                    "vol_avg_20": round(float(last["vol_avg20"]), 0), "vol_ratio": shock_ratio,
+                    "shock_level": shock_level
+                })
+
         CACHE["rsi"] = pd.DataFrame(rsi_list)
         CACHE["ma"] = pd.DataFrame(ma_list)
         CACHE["crossover"] = pd.DataFrame(cross_list)
         CACHE["confluence"] = pd.DataFrame(conf_list)
         CACHE["candlestick"] = pd.DataFrame(candle_list)
         CACHE["momentum"] = pd.DataFrame(momentum_list)
+        CACHE["volume_shocker"] = pd.DataFrame(volume_shocker_list)
         CACHE["last_updated"] = time.time()
         print("✅ Technical Data Updated")
     except Exception as e:
@@ -172,6 +183,21 @@ def crossovers_all():
 def candlesticks_all():
     return CACHE["candlestick"].to_dict(orient="records")
 
+@app.get("/volume-shockers/all")
+def volume_shockers_all():
+    return CACHE["volume_shocker"].sort_values("vol_ratio", ascending=False).to_dict(orient="records")
+
+@app.get("/volume-shockers/filter")
+def volume_shockers_filter(level: str = None):
+    """
+    Filter volume shockers by shock level: Extreme, High, Moderate
+    Example: /volume-shockers/filter?level=Extreme
+    """
+    df = CACHE["volume_shocker"].copy()
+    if level and level in ["Extreme", "High", "Moderate"]:
+        df = df[df["shock_level"] == level]
+    return df.sort_values("vol_ratio", ascending=False).to_dict(orient="records")
+
 @app.get("/rsi/filter")
 def rsi_filter(min: float = None, max: float = None):
     df = CACHE["rsi"].copy()
@@ -186,6 +212,10 @@ def rsi_status():
 @app.get("/ma/status")
 def ma_status():
     return {"status": "ready" if not CACHE["ma"].empty else "not_ready", "symbols": len(CACHE["ma"])}
+
+@app.get("/volume-shockers/status")
+def volume_shockers_status():
+    return {"status": "ready" if not CACHE["volume_shocker"].empty else "not_ready", "shockers": len(CACHE["volume_shocker"])}
 
 @app.get("/refresh-technical")
 async def refresh():
