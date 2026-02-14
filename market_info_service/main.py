@@ -24,60 +24,12 @@ app.add_middleware(
 )
 
 async def fetch_offerings(type: int, for_category: int, size: int = 30):
-    """Fetch offerings with both size=5 and size=30 and combine results"""
-    all_data = []
-    seen_ids = set()
-    
-    async with httpx.AsyncClient(timeout=30) as client:
-        # Fetch with size=5
-        params_5 = {"size": 5, "type": type, "for": for_category}
-        try:
-            resp = await client.get(SHAREHUB_OFFERING_URL, params=params_5, headers=DEFAULT_HEADERS)
-            if resp.status_code == 200:
-                page_data = resp.json()
-                if isinstance(page_data, dict) and "data" in page_data:
-                    items = page_data.get("data", [])
-                    if isinstance(items, list):
-                        for item in items:
-                            # Use a unique identifier to avoid duplicates
-                            item_id = item.get("id") or item.get("symbol") or str(item)
-                            if item_id not in seen_ids:
-                                seen_ids.add(item_id)
-                                all_data.append(item)
-                elif isinstance(page_data, list):
-                    for item in page_data:
-                        item_id = item.get("id") or item.get("symbol") or str(item)
-                        if item_id not in seen_ids:
-                            seen_ids.add(item_id)
-                            all_data.append(item)
-        except Exception as e:
-            print(f"Error fetching size=5: {str(e)}")
-        
-        # Fetch with size=30
-        params_30 = {"size": 30, "type": type, "for": for_category}
-        try:
-            resp = await client.get(SHAREHUB_OFFERING_URL, params=params_30, headers=DEFAULT_HEADERS)
-            if resp.status_code == 200:
-                page_data = resp.json()
-                if isinstance(page_data, dict) and "data" in page_data:
-                    items = page_data.get("data", [])
-                    if isinstance(items, list):
-                        for item in items:
-                            item_id = item.get("id") or item.get("symbol") or str(item)
-                            if item_id not in seen_ids:
-                                seen_ids.add(item_id)
-                                all_data.append(item)
-                elif isinstance(page_data, list):
-                    for item in page_data:
-                        item_id = item.get("id") or item.get("symbol") or str(item)
-                        if item_id not in seen_ids:
-                            seen_ids.add(item_id)
-                            all_data.append(item)
-        except Exception as e:
-            print(f"Error fetching size=30: {str(e)}")
-    
-    # Return in the same format as the original API
-    return {"success": True, "data": all_data, "total": len(all_data)}
+    params = {"size": 30, "type": type, "for": for_category}
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.get(SHAREHUB_OFFERING_URL, params=params, headers=DEFAULT_HEADERS)
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail="Failed to fetch offerings")
+    return resp.json()
 
 @app.get("/announcements")
 async def announcements(page: int = 1, size: int = 12):
