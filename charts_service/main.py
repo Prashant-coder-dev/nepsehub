@@ -26,9 +26,9 @@ async def stock_chart(
         raise HTTPException(status_code=resp.status_code, detail=f"Failed to fetch price history for {symbol}")
     return resp.json()
 
-@app.get("/stock-chart/index/1D")
-async def index_1d_chart():
-    url = "https://sharehubnepal.com/live/api/v1/daily-graph/index/58"
+@app.get("/stock-chart/index/1D/{symbol}")
+async def index_1d_chart(symbol: str):
+    url = f"https://sharehubnepal.com/live/api/v1/daily-graph/index/{symbol}"
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
     if resp.status_code != 200:
