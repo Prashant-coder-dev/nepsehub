@@ -16,7 +16,7 @@ from shared.constants import (
     GOOGLE_SHEET_CSV, RSI_PERIOD, MA_PERIOD, MA_50, MA_200
 )
 from technical_service.logic import (
-    calculate_rsi, calculate_ma, detect_candlestick, calculate_confluence_score, detect_volume_shocker
+    calculate_rsi, calculate_ma, detect_candlestick, detect_volume_shocker
 )
 
 app = FastAPI(title="NEPSE Technical Service")
@@ -35,7 +35,6 @@ CACHE = {
     "rsi": pd.DataFrame(),
     "ma": pd.DataFrame(),
     "crossover": pd.DataFrame(),
-    "confluence": pd.DataFrame(),
     "candlestick": pd.DataFrame(),
     "momentum": pd.DataFrame(),
     "volume_shocker": pd.DataFrame(),
@@ -66,7 +65,7 @@ async def load_technical_data():
         df = df.sort_values(["symbol", "date"])
         CACHE["raw"] = df.copy()
 
-        rsi_list, ma_list, cross_list, conf_list, candle_list, momentum_list = [], [], [], [], [], []
+        rsi_list, ma_list, cross_list, candle_list, momentum_list = [], [], [], [], []
         volume_shocker_list = []
 
         for symbol, g in df.groupby("symbol"):
@@ -109,12 +108,6 @@ async def load_technical_data():
             if pattern != "Neutral":
                 candle_list.append({"symbol": symbol_str, "close": float(last["close"]), "pattern": pattern})
 
-            score, breakdown = calculate_confluence_score(last["rsi"], ma_dist_pct, last["sma50"], last["sma200"])
-            conf_list.append({
-                "symbol": symbol_str, "close": float(last["close"]), "score": int(score),
-                "breakdown": breakdown, "rsi": round(float(last["rsi"]), 2) if not pd.isna(last["rsi"]) else None,
-                "trend": "Bullish" if score > 60 else "Bearish" if score < 40 else "Neutral"
-            })
 
             v_avg = last["vol_avg20"] if not pd.isna(last["vol_avg20"]) else 0
             vol_ratio = last["volume"] / v_avg if v_avg > 0 else 0
@@ -140,7 +133,6 @@ async def load_technical_data():
         CACHE["rsi"] = pd.DataFrame(rsi_list)
         CACHE["ma"] = pd.DataFrame(ma_list)
         CACHE["crossover"] = pd.DataFrame(cross_list)
-        CACHE["confluence"] = pd.DataFrame(conf_list)
         CACHE["candlestick"] = pd.DataFrame(candle_list)
         CACHE["momentum"] = pd.DataFrame(momentum_list)
         CACHE["volume_shocker"] = pd.DataFrame(volume_shocker_list)
@@ -171,9 +163,6 @@ def ma_all():
 def momentum_all():
     return CACHE["momentum"].to_dict(orient="records")
 
-@app.get("/confluence/all")
-def confluence_all():
-    return CACHE["confluence"].sort_values("score", ascending=False).to_dict(orient="records")
 
 @app.get("/crossovers/all")
 def crossovers_all():

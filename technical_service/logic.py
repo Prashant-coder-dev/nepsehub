@@ -39,35 +39,6 @@ def detect_candlestick(df):
         return "Bearish Engulfing"
     return "Neutral"
 
-def calculate_confluence_score(rsi, ma_dist_pct, sma50, sma200):
-    score = 50
-    breakdown = {"baseline": 50, "rsi": 0, "ma": 0, "trend": 0}
-    if not pd.isna(rsi):
-        if rsi < 30: 
-            score += 25
-            breakdown["rsi"] = 25
-        elif rsi < 40: 
-            score += 15
-            breakdown["rsi"] = 15
-        elif rsi > 70: 
-            score -= 20
-            breakdown["rsi"] = -20
-        elif rsi > 60: 
-            score -= 10
-            breakdown["rsi"] = -10
-    if not pd.isna(ma_dist_pct):
-        if ma_dist_pct > 0: 
-            score += 10
-            breakdown["ma"] += 10
-        if ma_dist_pct > 5: 
-            score += 5
-            breakdown["ma"] += 5
-    if not pd.isna(sma50) and not pd.isna(sma200):
-        if sma50 > sma200: 
-            score += 15
-            breakdown["trend"] = 15
-    final_score = max(0, min(100, score))
-    return final_score, breakdown
 
 def detect_volume_shocker(df, vol_avg_20):
     """
