@@ -66,3 +66,18 @@ def detect_volume_shocker(df, vol_avg_20):
         shock_level = "Normal"
     
     return shock_level, round(vol_ratio, 2)
+
+def calculate_macd(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9):
+    exp1 = close.ewm(span=fast, adjust=False).mean()
+    exp2 = close.ewm(span=slow, adjust=False).mean()
+    macd = exp1 - exp2
+    signal_line = macd.ewm(span=signal, adjust=False).mean()
+    histogram = macd - signal_line
+    return macd, signal_line, histogram
+
+def calculate_bollinger_bands(close: pd.Series, period: int = 20, std_dev: int = 2):
+    ma = close.rolling(window=period).mean()
+    std = close.rolling(window=period).std()
+    upper = ma + (std * std_dev)
+    lower = ma - (std * std_dev)
+    return upper, ma, lower
