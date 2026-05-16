@@ -9,6 +9,7 @@ import os
 import uvicorn
 import sys
 from io import StringIO
+import time
 
 # Add shared directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -46,7 +47,7 @@ CACHE = {
 
 async def load_technical_data():
     try:
-        print("🔄 Fetching Technical data from Google Sheets...")
+        print("Fetching Technical data from Google Sheets...")
         async with httpx.AsyncClient(timeout=180, follow_redirects=True) as client:
             resp = await client.get(GOOGLE_SHEET_CSV)
 
@@ -68,6 +69,8 @@ async def load_technical_data():
         df = df.sort_values(["symbol", "date"])
         CACHE["raw"] = df.copy()
 
+        rsi_list, ma_list, cross_list, candle_list = [], [], [], []
+        momentum_list, volume_shocker_list = [], []
         macd_list, bollinger_list = [], []
 
         for symbol, g in df.groupby("symbol"):
@@ -142,7 +145,7 @@ async def load_technical_data():
                 is_crossover = (prev["macd"] <= prev["macd_signal"] and last["macd"] > last["macd_signal"]) or \
                                (prev["macd"] >= prev["macd_signal"] and last["macd"] < last["macd_signal"])
                 macd_list.append({
-                    "symbol": symbol_str, "macd": round(float(last["macd"]), 2), 
+                    "symbol": symbol_str, "close": float(last["close"]), "macd": round(float(last["macd"]), 2), 
                     "signal_line": round(float(last["macd_signal"]), 2), 
                     "hist": round(float(last["macd_hist"]), 2),
                     "signal": signal, "is_crossover": is_crossover
@@ -153,7 +156,7 @@ async def load_technical_data():
                 status = "Overbought" if last["close"] >= last["bb_upper"] else \
                          "Oversold" if last["close"] <= last["bb_lower"] else "Normal"
                 bollinger_list.append({
-                    "symbol": symbol_str, "upper": round(float(last["bb_upper"]), 2),
+                    "symbol": symbol_str, "close": float(last["close"]), "upper": round(float(last["bb_upper"]), 2),
                     "mid": round(float(last["bb_mid"]), 2), "lower": round(float(last["bb_lower"]), 2),
                     "status": status
                 })
@@ -167,9 +170,9 @@ async def load_technical_data():
         CACHE["macd"] = pd.DataFrame(macd_list)
         CACHE["bollinger"] = pd.DataFrame(bollinger_list)
         CACHE["last_updated"] = time.time()
-        print("✅ Technical Data Updated")
+        print("Technical Data Updated")
     except Exception as e:
-        print(f"❌ Load Error: {e}")
+        print(f"Load Error: {e}")
 
 async def auto_refresh():
     while True:
@@ -252,4 +255,3 @@ async def refresh():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8002))
     uvicorn.run("main:app", host="0.0.0.0", port=port)
-import time
