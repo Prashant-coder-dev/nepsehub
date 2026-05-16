@@ -16,7 +16,8 @@ from shared.constants import (
     GOOGLE_SHEET_CSV, RSI_PERIOD, MA_PERIOD, MA_50, MA_200
 )
 from technical_service.logic import (
-    calculate_rsi, calculate_ma, detect_candlestick, detect_volume_shocker
+    calculate_rsi, calculate_ma, detect_candlestick, detect_volume_shocker,
+    calculate_macd, calculate_bollinger_bands
 )
 
 app = FastAPI(title="NEPSE Technical Service")
@@ -38,13 +39,15 @@ CACHE = {
     "candlestick": pd.DataFrame(),
     "momentum": pd.DataFrame(),
     "volume_shocker": pd.DataFrame(),
+    "macd": pd.DataFrame(),
+    "bollinger": pd.DataFrame(),
     "last_updated": None
 }
 
 async def load_technical_data():
     try:
         print("🔄 Fetching Technical data from Google Sheets...")
-        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=180, follow_redirects=True) as client:
             resp = await client.get(GOOGLE_SHEET_CSV)
 
         if resp.status_code != 200:
@@ -65,8 +68,7 @@ async def load_technical_data():
         df = df.sort_values(["symbol", "date"])
         CACHE["raw"] = df.copy()
 
-        rsi_list, ma_list, cross_list, candle_list, momentum_list = [], [], [], [], []
-        volume_shocker_list = []
+        macd_list, bollinger_list = [], []
 
         for symbol, g in df.groupby("symbol"):
             symbol_str = str(symbol).upper()
@@ -79,6 +81,10 @@ async def load_technical_data():
             g["sma50"] = calculate_ma(g["close"], MA_50)
             g["sma200"] = calculate_ma(g["close"], MA_200)
             g["vol_avg20"] = calculate_ma(g["volume"], 20)
+            
+            # New Indicators
+            g["macd"], g["macd_signal"], g["macd_hist"] = calculate_macd(g["close"])
+            g["bb_upper"], g["bb_mid"], g["bb_lower"] = calculate_bollinger_bands(g["close"])
             
             last = g.iloc[-1]
             prev = g.iloc[-2]
@@ -129,6 +135,28 @@ async def load_technical_data():
                     "vol_avg_20": round(float(last["vol_avg20"]), 0), "vol_ratio": shock_ratio,
                     "shock_level": shock_level
                 })
+            
+            # MACD Signals
+            if not pd.isna(last["macd"]):
+                signal = "Bullish" if last["macd"] > last["macd_signal"] else "Bearish"
+                is_crossover = (prev["macd"] <= prev["macd_signal"] and last["macd"] > last["macd_signal"]) or \
+                               (prev["macd"] >= prev["macd_signal"] and last["macd"] < last["macd_signal"])
+                macd_list.append({
+                    "symbol": symbol_str, "macd": round(float(last["macd"]), 2), 
+                    "signal_line": round(float(last["macd_signal"]), 2), 
+                    "hist": round(float(last["macd_hist"]), 2),
+                    "signal": signal, "is_crossover": is_crossover
+                })
+
+            # Bollinger Signals
+            if not pd.isna(last["bb_upper"]):
+                status = "Overbought" if last["close"] >= last["bb_upper"] else \
+                         "Oversold" if last["close"] <= last["bb_lower"] else "Normal"
+                bollinger_list.append({
+                    "symbol": symbol_str, "upper": round(float(last["bb_upper"]), 2),
+                    "mid": round(float(last["bb_mid"]), 2), "lower": round(float(last["bb_lower"]), 2),
+                    "status": status
+                })
 
         CACHE["rsi"] = pd.DataFrame(rsi_list)
         CACHE["ma"] = pd.DataFrame(ma_list)
@@ -136,6 +164,8 @@ async def load_technical_data():
         CACHE["candlestick"] = pd.DataFrame(candle_list)
         CACHE["momentum"] = pd.DataFrame(momentum_list)
         CACHE["volume_shocker"] = pd.DataFrame(volume_shocker_list)
+        CACHE["macd"] = pd.DataFrame(macd_list)
+        CACHE["bollinger"] = pd.DataFrame(bollinger_list)
         CACHE["last_updated"] = time.time()
         print("✅ Technical Data Updated")
     except Exception as e:
@@ -175,6 +205,14 @@ def candlesticks_all():
 @app.get("/volume-shockers/all")
 def volume_shockers_all():
     return CACHE["volume_shocker"].sort_values("vol_ratio", ascending=False).to_dict(orient="records")
+
+@app.get("/macd/all")
+def macd_all():
+    return CACHE["macd"].to_dict(orient="records")
+
+@app.get("/bollinger/all")
+def bollinger_all():
+    return CACHE["bollinger"].to_dict(orient="records")
 
 @app.get("/volume-shockers/filter")
 def volume_shockers_filter(level: str = None):
