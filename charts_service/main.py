@@ -19,9 +19,15 @@ async def stock_chart(
     symbol: str, 
     time: str = Query("1Y", regex="^(1D|1W|1M|3M|6M|1Y|5Y)$")
 ):
-    url = f"https://sharehubnepal.com/data/api/v1/price-history/graph/{symbol.upper()}"
-    async with httpx.AsyncClient(timeout=20) as client:
-        resp = await client.get(url, params={"time": time}, headers={"User-Agent": "Mozilla/5.0"})
+    if time == "1D":
+        url = f"https://sharehubnepal.com/live/api/v1/daily-graph/company/{symbol.upper()}"
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
+    else:
+        url = f"https://sharehubnepal.com/data/api/v1/price-history/graph/{symbol.upper()}"
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(url, params={"time": time}, headers={"User-Agent": "Mozilla/5.0"})
+
     if resp.status_code != 200:
         raise HTTPException(status_code=resp.status_code, detail=f"Failed to fetch price history for {symbol}")
     return resp.json()
