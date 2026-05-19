@@ -145,6 +145,45 @@ async def get_stock_report(symbol: str = Query(..., description="Stock symbol"))
         return report_resp.json()
 
 
+@app.get("/broker-snapshot")
+async def get_broker_snapshot():
+    """
+    Fetch broker snapshot from NEPSElytics API.
+    """
+    url = "https://nepselytics-6d61dea19f30.herokuapp.com/api/nepselytics/broker-snapshot"
+    headers = {**DEFAULT_HEADERS, "User-Agent": "Mozilla/5.0"}
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            resp = await client.get(url, headers=headers)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to connect to broker snapshot server: {str(e)}")
+            
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail="Failed to fetch broker snapshot")
+        
+    return resp.json()
+
+
+@app.get("/market-depth/{symbol}")
+async def get_market_depth(symbol: str):
+    """
+    Fetch market depth for a specific symbol.
+    """
+    symbol_upper = symbol.upper()
+    url = f"https://sharehubnepal.com/live/api/v2/nepselive/market-depth/{symbol_upper}"
+    headers = {**DEFAULT_HEADERS, "User-Agent": "Mozilla/5.0"}
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            resp = await client.get(url, headers=headers)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to connect to market depth server: {str(e)}")
+            
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail=f"Failed to fetch market depth for {symbol_upper}")
+        
+    return resp.json()
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8005))
     uvicorn.run("main:app", host="0.0.0.0", port=port)
