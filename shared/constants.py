@@ -5,6 +5,7 @@ NEPSELYTICS_URL = "https://sharehubnepal.com/live/api/v2/nepselive/home-page-dat
 NEPSE_TURNOVER_URL = "https://tms59.nepsetms.com.np/tmsapi/rtApi/admin/vCache/marketTurnover"
 NEPSELYTICS_FLOORSHEET_URL = "https://nepselytics-6d61dea19f30.herokuapp.com/api/nepselytics/floorsheet"
 NEPSELYTICS_STOCK_PROFILE_URL = "https://nepselytics-6d61dea19f30.herokuapp.com/api/nepselytics/stock-profile"
+NEPSELYTICS_ALPHA_BETA_URL = "https://nepselytics-6d61dea19f30.herokuapp.com/api/nepselytics/alpha-beta"
 
 NEPALIPAISA_INDEX_URL = "https://nepalipaisa.com/api/GetIndexLive"
 NEPALIPAISA_SUBINDEX_URL = "https://nepalipaisa.com/api/GetSubIndexLive"
