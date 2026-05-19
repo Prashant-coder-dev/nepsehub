@@ -11,6 +11,8 @@ from shared.constants import (
     NEPSELYTICS_STOCK_PROFILE_URL,
     NEPSELYTICS_ALPHA_BETA_URL,
     NEPSELYTICS_BROKER_TOP_HOLDING_URL,
+    NEPSELYTICS_STOCK_LIST_URL,
+    NEPSELYTICS_STOCK_REPORT_URL,
     DEFAULT_HEADERS
 )
 
@@ -96,6 +98,52 @@ async def get_broker_top_holding(
         raise HTTPException(status_code=resp.status_code, detail=f"Failed to fetch broker top holdings for {symbol}")
         
     return resp.json()
+
+@app.get("/report")
+async def get_stock_report(symbol: str = Query(..., description="Stock symbol")):
+    """
+    Fetch stock report from NEPSElytics API by resolving the symbol to a stock ID first.
+    """
+    if not symbol:
+        raise HTTPException(status_code=400, detail="Symbol parameter is required")
+        
+    symbol_upper = symbol.upper()
+    headers = {**DEFAULT_HEADERS, "User-Agent": "Mozilla/5.0"}
+    
+    async with httpx.AsyncClient(timeout=30) as client:
+        # 1. Fetch stock list to get the ID
+        try:
+            list_resp = await client.get(NEPSELYTICS_STOCK_LIST_URL, headers=headers)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to connect to stock list server: {str(e)}")
+            
+        if list_resp.status_code != 200:
+            raise HTTPException(status_code=list_resp.status_code, detail="Failed to fetch stock list from NEPSElytics")
+            
+        stocks = list_resp.json()
+        
+        # Find stock by symbol
+        stock_id = None
+        for stock in stocks:
+            if stock.get("symbol", "").upper() == symbol_upper:
+                stock_id = stock.get("id")
+                break
+                
+        if not stock_id:
+            raise HTTPException(status_code=404, detail=f"Stock ID not found for symbol: {symbol_upper}")
+            
+        # 2. Fetch stock report by ID
+        report_url = f"{NEPSELYTICS_STOCK_REPORT_URL}/{stock_id}"
+        try:
+            report_resp = await client.get(report_url, headers=headers)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to connect to stock report server: {str(e)}")
+            
+        if report_resp.status_code != 200:
+            raise HTTPException(status_code=report_resp.status_code, detail=f"Failed to fetch stock report for ID {stock_id}")
+            
+        return report_resp.json()
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8005))
