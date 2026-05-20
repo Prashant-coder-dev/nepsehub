@@ -9,6 +9,7 @@ NEPSELYTICS_ALPHA_BETA_URL = "https://nepselytics-6d61dea19f30.herokuapp.com/api
 NEPSELYTICS_BROKER_TOP_HOLDING_URL = "https://nepselytics-6d61dea19f30.herokuapp.com/api/nepselytics/broker-top-holding"
 NEPSELYTICS_STOCK_LIST_URL = "https://nepselytics-6d61dea19f30.herokuapp.com/api/nepselytics/stock-list"
 NEPSELYTICS_STOCK_REPORT_URL = "https://nepselytics-6d61dea19f30.herokuapp.com/api/nepselytics/stock-report"
+NEPSELYTICS_LIVE_NEPSE_URL = "https://nepselytics-6d61dea19f30.herokuapp.com/api/nepselytics/live-nepse"
 
 NEPALIPAISA_INDEX_URL = "https://nepalipaisa.com/api/GetIndexLive"
 NEPALIPAISA_SUBINDEX_URL = "https://nepalipaisa.com/api/GetSubIndexLive"
