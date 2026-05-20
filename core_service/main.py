@@ -13,7 +13,8 @@ from shared.constants import (
     NEPSE_TURNOVER_URL, 
     NEPALIPAISA_INDEX_URL, 
     NEPALIPAISA_SUBINDEX_URL,
-    DEFAULT_HEADERS
+    DEFAULT_HEADERS,
+    NEPSELYTICS_LIVE_NEPSE_URL
 )
 
 app = FastAPI(title="NEPSE Core Service")
@@ -36,6 +37,23 @@ async def homepage_data():
         resp = await client.get(NEPSELYTICS_URL)
     if resp.status_code != 200:
         raise HTTPException(status_code=resp.status_code, detail="Failed to fetch homepage market data")
+    return resp.json()
+
+@app.get("/live-nepse")
+async def live_nepse():
+    """
+    Fetch real-time Live NEPSE data from NEPSElytics API.
+    """
+    headers = {**DEFAULT_HEADERS, "User-Agent": "Mozilla/5.0"}
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            resp = await client.get(NEPSELYTICS_LIVE_NEPSE_URL, headers=headers)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to connect to live NEPSE server: {str(e)}")
+            
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail="Failed to fetch live NEPSE data")
+        
     return resp.json()
 
 @app.get("/market-turnover")
