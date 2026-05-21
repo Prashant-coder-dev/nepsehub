@@ -23,6 +23,9 @@ GOOGLE_SHEET_CSV = (
     "/export?format=csv"
 )
 
+CDSC_COMPANY_LIST_URL = "https://iporesult.cdsc.com.np/result/company/list"
+CDSC_CHECK_RESULT_URL = "https://iporesult.cdsc.com.np/result/company/check-result"
+
 # Technical Periods
 RSI_PERIOD = 14
 MA_PERIOD = 20

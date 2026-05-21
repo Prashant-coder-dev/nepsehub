@@ -13,10 +13,11 @@ try:
     from charts_service.main import app as charts_app
     from market_info_service.main import app as market_app
     from stock_profile_service.main import app as stock_profile_app
+    from ipo_service.main import app as ipo_app
 except ImportError as e:
     print(f"Error importing sub-services: {e}")
     # Provide dummy apps if any fail to import
-    core_app = tech_app = charts_app = market_app = stock_profile_app = FastAPI()
+    core_app = tech_app = charts_app = market_app = stock_profile_app = ipo_app = FastAPI()
 
 # Create the Master App
 app = FastAPI(
@@ -41,6 +42,7 @@ app.mount("/technical", tech_app)
 app.mount("/charts", charts_app)
 app.mount("/market-info", market_app)
 app.mount("/stock-profile", stock_profile_app)
+app.mount("/ipo", ipo_app)
 
 @app.get("/")
 def read_root():
@@ -52,7 +54,8 @@ def read_root():
             "technical": "LIVE - RSI, Moving Averages, and Momentum",
             "charts": "LIVE - Historical and intraday charting data",
             "market-info": "LIVE - Company fundamentals and floorsheet",
-            "stock-profile": "LIVE - Detailed stock profile data"
+            "stock-profile": "LIVE - Detailed stock profile data",
+            "ipo": "LIVE - CDSC IPO result check proxy"
         },
         "docs": "/docs"
     }
