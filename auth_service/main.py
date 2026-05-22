@@ -139,8 +139,13 @@ def login(req: LoginRequest):
         if not email or not password:
             raise HTTPException(status_code=400, detail="Email and password are required")
 
-        supabase = get_supabase()
-        result = supabase.auth.sign_in_with_password(email=email, password=password)
+        # Authenticate the user – handle different Supabase client signatures
+        try:
+            # Preferred positional call (newer versions)
+            result = supabase.auth.sign_in_with_password(email, password)
+        except TypeError:
+            # Older versions expect a dict payload
+            result = supabase.auth.sign_in_with_password({"email": email, "password": password})
         if result.user is None:
             raise HTTPException(status_code=401, detail="Invalid email or password")
         # Retrieve profile name
