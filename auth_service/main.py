@@ -17,8 +17,9 @@ try:
     )
     from shared.auth_db import (
         user_exists, create_user, get_user_by_email,
-        get_user_by_id, update_user_password
+        get_user_by_id, update_user_password, get_supabase
     )
+
     print("✅ Imported from shared folder")
 except ImportError as e:
     print(f"⚠️  Could not import from shared: {e}")
@@ -79,6 +80,8 @@ def root():
 # AUTH ROUTES
 # ─────────────────────────────────────────────
 
+
+
 @app.post("/signup")
 def signup(req: SignupRequest):
     """Create new user account with auto-generated password"""
@@ -89,21 +92,31 @@ def signup(req: SignupRequest):
         if not email or not name:
             raise HTTPException(status_code=400, detail="Email and name are required")
         
-        if user_exists(email):
-            raise HTTPException(status_code=400, detail="Email already registered")
-        
+        # Use Supabase Auth to create user and trigger verification email
         password = generate_password()
-        password_hash = hash_password(password)
-        
-        user = create_user(email, name, password_hash)
-        if not user:
-            raise HTTPException(status_code=500, detail="Failed to create user")
-        
+        supabase = get_supabase()
+        # Sign up the user with generated password; Supabase will send verification email automatically
+        sign_up_result = supabase.auth.sign_up(email=email, password=password)
+        if sign_up_result.user is None:
+            # Supabase returns error details in sign_up_result.error
+            raise HTTPException(status_code=400, detail=sign_up_result.error.message if sign_up_result.error else "Signup failed")
+        user = sign_up_result.user
+        # Trigger verification email (Supabase will send if enabled)
+        try:
+            supabase.auth.api.send_verification_email(email)
+        except Exception as ve:
+            print(f'Verification email error: {ve}')
+        # Store extra profile information (name) in a separate table
+        try:
+            supabase.table('profiles').upsert({"id": user.id, "name": name}).execute()
+        except Exception as e:
+            # Non‑critical – the user is still created, but log the issue
+            print(f"Profile save error: {e}")
+        # Optionally still email the generated password (or let user set it via reset flow)
         send_signup_email(email, password)
-        
         return {
-            "message": "Account created! Check your email for login credentials.",
-            "user": {"id": user.get('id'), "email": user.get('email'), "name": user.get('name')}
+            "message": "Account created! Check your email for verification and login credentials.",
+            "user": {"id": user.id, "email": user.email, "name": name}
         }
     except HTTPException:
         raise
@@ -113,25 +126,31 @@ def signup(req: SignupRequest):
 
 @app.post("/login")
 def login(req: LoginRequest):
-    """Authenticate user and return JWT tokens"""
+    """Authenticate user via Supabase and return JWT tokens"""
     try:
         email = req.email.strip().lower()
         password = req.password
-        
+
         if not email or not password:
             raise HTTPException(status_code=400, detail="Email and password are required")
-        
-        user = get_user_by_email(email)
-        if not user or not verify_password(password, user['password_hash']):
+
+        supabase = get_supabase()
+        result = supabase.auth.sign_in_with_password(email=email, password=password)
+        if result.user is None:
             raise HTTPException(status_code=401, detail="Invalid email or password")
-        
-        token = generate_token(user, '1h')
-        refresh_token = generate_token(user, '7d')
-        
+        # Retrieve profile name
+        name = ""
+        try:
+            profile_res = supabase.table('profiles').select('name').eq('id', result.user.id).single().execute()
+            if profile_res.data:
+                name = profile_res.data.get('name')
+        except Exception:
+            pass
+
         return {
-            "token": token,
-            "refreshToken": refresh_token,
-            "user": {"id": user['id'], "email": user['email'], "name": user['name']}
+            "token": result.session.access_token,
+            "refreshToken": result.session.refresh_token,
+            "user": {"id": result.user.id, "email": result.user.email, "name": name}
         }
     except HTTPException:
         raise
