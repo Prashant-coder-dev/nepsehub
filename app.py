@@ -3,20 +3,46 @@ import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Try to load environment variables from .env file for local development
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Add the current directory to sys.path so sub-modules can be found
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Import the individual service apps
-try:
-    from core_service.main import app as core_app
-    from technical_service.main import app as tech_app
-    from charts_service.main import app as charts_app
-    from market_info_service.main import app as market_app
-    from stock_profile_service.main import app as stock_profile_app
-except ImportError as e:
-    print(f"Error importing sub-services: {e}")
-    # Provide dummy apps if any fail to import
-    core_app = tech_app = charts_app = market_app = stock_profile_app = FastAPI()
+# Add parent's database-backend directory to sys.path so database-backend sub-modules can be imported
+db_backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "database-backend"))
+if db_backend_path not in sys.path:
+    sys.path.append(db_backend_path)
+
+# Helper function to import sub-services individually and safely
+def import_service(module_name, app_name="app"):
+    try:
+        from importlib import import_module
+        module = import_module(module_name)
+        return getattr(module, app_name)
+    except Exception as e:
+        print(f"⚠️ Error importing service '{module_name}': {e}")
+        # Provide a descriptive fallback app so the rest of the API Gateway works
+        fallback_app = FastAPI(title=f"NEPSE Hub {module_name} (Fallback)")
+        @fallback_app.get("/")
+        def fallback_root():
+            return {
+                "status": "offline",
+                "error": f"Service failed to load: {str(e)}"
+            }
+        return fallback_app
+
+# Import individual sub-services safely
+core_app = import_service("core_service.main")
+tech_app = import_service("technical_service.main")
+charts_app = import_service("charts_service.main")
+market_app = import_service("market_info_service.main")
+stock_profile_app = import_service("stock_profile_service.main")
+auth_app = import_service("auth_service.main")
 
 # Create the Master App
 app = FastAPI(
@@ -41,6 +67,7 @@ app.mount("/technical", tech_app)
 app.mount("/charts", charts_app)
 app.mount("/market-info", market_app)
 app.mount("/stock-profile", stock_profile_app)
+app.mount("/api/auth", auth_app)
 
 @app.get("/")
 def read_root():

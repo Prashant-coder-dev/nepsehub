@@ -4,3 +4,7 @@ httpx
 pandas
 numpy
 python-multipart
+supabase
+bcrypt
+pyjwt
+python-dotenv

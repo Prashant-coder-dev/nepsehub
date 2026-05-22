@@ -181,7 +181,8 @@ async def auto_refresh():
 
 @app.on_event("startup")
 async def startup():
-    await load_technical_data()
+    # Boot instantly and load the technical data in the background
+    asyncio.create_task(load_technical_data())
     asyncio.create_task(auto_refresh())
 
 @app.get("/rsi/all")

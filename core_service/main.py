@@ -88,7 +88,7 @@ async def subindex_live():
 async def floorsheet(
     page: int = Query(0, ge=0),
     size: int = Query(500, ge=1, le=500),
-    order: str = Query("desc", regex="^(asc|desc)$")
+    order: str = Query("desc", pattern="^(asc|desc)$")
 ):
     from shared.constants import NEPSELYTICS_FLOORSHEET_URL
     headers = {**DEFAULT_HEADERS, "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}

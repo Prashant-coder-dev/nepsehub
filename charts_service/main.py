@@ -17,7 +17,7 @@ app.add_middleware(
 @app.get("/stock-chart/{symbol}")
 async def stock_chart(
     symbol: str, 
-    time: str = Query("1Y", regex="^(1D|1W|1M|3M|6M|1Y|5Y)$")
+    time: str = Query("1Y", pattern="^(1D|1W|1M|3M|6M|1Y|5Y)$")
 ):
     if time == "1D":
         url = f"https://sharehubnepal.com/live/api/v1/daily-graph/company/{symbol.upper()}"
