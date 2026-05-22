@@ -95,8 +95,13 @@ def signup(req: SignupRequest):
         # Use Supabase Auth to create user and trigger verification email
         password = generate_password()
         supabase = get_supabase()
-        # Sign up the user with generated password; Supabase will send verification email automatically
-        sign_up_result = supabase.auth.sign_up(email=email, password=password)
+        # Sign up the user – handle different Supabase client signatures
+        try:
+            # Preferred positional call (newer versions)
+            sign_up_result = supabase.auth.sign_up(email, password)
+        except TypeError:
+            # Older versions expect a dict payload
+            sign_up_result = supabase.auth.sign_up({"email": email, "password": password})
         if sign_up_result.user is None:
             # Supabase returns error details in sign_up_result.error
             raise HTTPException(status_code=400, detail=sign_up_result.error.message if sign_up_result.error else "Signup failed")
