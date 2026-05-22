@@ -140,6 +140,7 @@ def login(req: LoginRequest):
             raise HTTPException(status_code=400, detail="Email and password are required")
 
         # Authenticate the user – handle different Supabase client signatures
+        supabase = get_supabase()
         try:
             # Preferred positional call (newer versions)
             result = supabase.auth.sign_in_with_password(email, password)
