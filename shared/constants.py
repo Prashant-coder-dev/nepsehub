@@ -17,9 +17,6 @@ NEPALIPAISA_SUBINDEX_URL = "https://nepalipaisa.com/api/GetSubIndexLive"
 SHAREHUB_ANNOUNCEMENT_URL = "https://sharehubnepal.com/data/api/v1/announcement"
 SHAREHUB_OFFERING_URL = "https://sharehubnepal.com/data/api/v1/public-offering"
 
-CDSC_COMPANY_LIST_URL = "https://iporesult.cdsc.com.np/result/company/list"
-CDSC_CHECK_RESULT_URL = "https://iporesult.cdsc.com.np/result/company/check-result"
-
 # Common Headers
 DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0",
